@@ -25,21 +25,21 @@ type MkDotfiles = Action Dotfiles
 
 dotfiles :: (Dotfile -> IO Bool) -> MkDotfiles
 dotfiles f = do
-    (env, _) <- ask
-    cfg <- liftIO $ readCfg env
-    liftIO $ filter' f (mkDotfiles env cfg)
+  (env, _) <- ask
+  cfg <- liftIO $ readCfg env
+  liftIO $ filter' f (mkDotfiles env cfg)
 
 
 candidates :: MkDotfiles
 candidates = do
-    (env, args) <- ask
-    return $ mkDotfiles env (Set.fromList args)
+  (env, args) <- ask
+  return $ mkDotfiles env (Set.fromList args)
 
 
 runCommand :: Command -> Args -> IO ()
 runCommand cmd args = do
-    env <- getEnv
-    runReaderT cmd (env, args)
+  env <- getEnv
+  runReaderT cmd (env, args)
 
 
 install :: Command
@@ -49,24 +49,23 @@ install = do
     [] -> doSimpleInstall
     -- TODO (x:y:_) -> gitClone x y
     (repoURL:_) -> gitClone repoURL (envRoot env)
+  where 
+    doSimpleInstall = do
+        (env, _) <- ask
+        liftIO $ mapM_ mkdir [envRoot env, envFilesDir env]
+        _ <- liftIO $ readCfg env
+            `catch` (\(SomeException _) -> do
+                        writeFile (envCfgPath env) defaultCfg
+                        readCfg env
+                    )
+        dfs <- dotfiles pending
+        liftIO $ mapM_ sync dfs
 
-
-doSimpleInstall :: Command
-doSimpleInstall = do
-  (env, _) <- ask
-  liftIO $ mapM_ mkdir [envRoot env, envFilesDir env]
-  _ <- liftIO $ readCfg env
-    `catch` (\(SomeException _) -> writeFile (envCfgPath env) defaultCfg >> readCfg env)
-  dfs <- dotfiles pending
-  liftIO $ mapM_ sync dfs
-
-
-gitClone :: String -> String -> Command
-gitClone repo localDir = do
-    (env, _) <- ask
-    liftIO $ setCurrentDirectory (envHome env)
-    call $ unwords ["git clone", repo, normalize env localDir]
-    dotfiles pending >>= \dfs -> liftIO $ mapM_ (backup env) dfs >> mapM_ link dfs
+    gitClone repo localDir = do
+        (env, _) <- ask
+        liftIO $ setCurrentDirectory (envHome env)
+        call $ unwords ["git clone", repo, normalize env localDir]
+        dotfiles pending >>= \dfs -> liftIO $ mapM_ (backup env) dfs >> mapM_ link dfs
 
 
 uninstall :: Command

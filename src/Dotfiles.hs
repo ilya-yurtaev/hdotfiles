@@ -123,7 +123,8 @@ backup env df = cp (dfSrc df) (envBackupDir env) >> link df
 
 -- filters
 filter' :: (Dotfile -> IO Bool) -> Dotfiles -> IO Dotfiles
-filter' p xs = filterM p (Set.toList xs) >>= \dfs -> return $ Set.fromList dfs
+filter' p xs = filterM p (Set.toList xs) >>=
+               \dfs -> return $ Set.fromList dfs
 
 
 valid :: Dotfile -> IO Bool
