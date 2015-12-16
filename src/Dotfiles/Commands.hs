@@ -76,9 +76,8 @@ addDotfiles :: Command
 addDotfiles = do
     dfs <- dotfiles tracked
     cnds <- candidates
-    let newDfs = Set.union dfs cnds
-    save newDfs
-    liftIO $ mapM_ link newDfs
+    save $ Set.union dfs cnds
+    liftIO $ mapM_ sync (Set.difference cnds dfs)
 
 
 forgetDotfiles :: Command
@@ -102,7 +101,7 @@ gitCommitAndPush = do
   call "git push"
   call "git status"
     where msg args = case args of
-                    [] -> "\"regular update\""
+                    [] -> show "regular update"
                     xs -> unwords xs
 
 
@@ -117,7 +116,9 @@ showStatus = do
   pending' <- dotfiles pending
   invalid' <- dotfiles invalid
   liftIO $ mapM_ putStrLn (
-    "Tracked:": tab env tracked' ++ "Pending:": tab env pending' ++ "Invalid:": tab env invalid'
+    "Tracked:": tab env tracked' ++
+    "Pending:": tab env pending' ++
+    "Invalid:": tab env invalid'
     ) where
       tab :: Env -> Dotfiles -> [String]
       tab env xs = fmap ("\t" ++) (unpack env xs)
