@@ -112,6 +112,7 @@ call = liftIO . void . system
 showStatus :: Command
 showStatus = do
   (env,  _) <- ask
+  liftIO $ setCurrentDirectory (envRoot env)
   tracked' <- dotfiles tracked
   pending' <- dotfiles pending
   invalid' <- dotfiles invalid
@@ -119,7 +120,9 @@ showStatus = do
     "Tracked:": tab env tracked' ++
     "Pending:": tab env pending' ++
     "Invalid:": tab env invalid'
-    ) where
+    ) 
+  call "git status"
+  where
       tab :: Env -> Dotfiles -> [String]
       tab env xs = fmap ("\t" ++) (unpack env xs)
 
