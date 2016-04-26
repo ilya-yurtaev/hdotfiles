@@ -1,35 +1,35 @@
 module Dotfiles where
 
-import Control.Exception (catch, SomeException(..))
-import Control.Monad (filterM, liftM)
+import           Control.Exception (catch, SomeException(..))
+import           Control.Monad (filterM, liftM)
 import qualified Data.Set as Set
-import Data.Set hiding (valid, filter)
-import Data.String.Utils (strip, replace)
-import System.Directory (getHomeDirectory, getTemporaryDirectory)
-import System.FilePath (normalise, (</>), joinPath)
-import System.Posix (readSymbolicLink, createSymbolicLink)
+import           Data.Set hiding (valid, filter)
+import           Data.String.Utils (strip, replace)
+import           System.Directory (getHomeDirectory, getTemporaryDirectory)
+import           System.FilePath (normalise, (</>), joinPath)
+import           System.Posix (readSymbolicLink, createSymbolicLink)
 
 
-import Dotfiles.Utils
+import           Dotfiles.Utils
 
 
-data Dotfile = Dotfile {
-    dfName :: String
+data Dotfile = Dotfile
+  { dfName :: String
   , dfSrc :: FilePath
   , dfDst :: FilePath
-} deriving (Show, Eq, Ord)
+  } deriving (Show, Eq, Ord)
 
 type Dotfiles = Set Dotfile
 
 
-data Env = Env {
-    envHome :: FilePath
+data Env = Env
+  { envHome :: FilePath
   , envRoot :: FilePath
   , envFilesDir :: FilePath
   , envCfgPath :: FilePath
   , envTmpCfgPath :: FilePath
   , envBackupDir :: FilePath
-} deriving (Show, Eq)
+  } deriving (Show, Eq)
 
 
 -- | It's actually .dotconfig content
@@ -47,14 +47,14 @@ getEnv = do
     let envRoot' = home </> ".dotfiles"
         cfgPath = envRoot' </> ".dotconfig"
         tmpCfgPath = tmp </> ".dotconfig"
-        in return Env {
-              envHome=home
+        in return Env
+            { envHome=home
             , envRoot=envRoot'
             , envFilesDir=envRoot' </> "files"
             , envCfgPath=cfgPath
             , envTmpCfgPath=tmpCfgPath
             , envBackupDir=envRoot' </> "backups"
-        }
+            }
 
 
 readCfg :: Env -> IO Names
@@ -118,7 +118,7 @@ unlink df = rm (dfSrc df) >> mv (dfDst df) (dfSrc df)
 
 
 backup :: Env -> Dotfile -> IO ()
-backup env df = cp (dfSrc df) (envBackupDir env) >> link df
+backup env df = cp (dfSrc df) (envBackupDir env)
 
 
 -- filters

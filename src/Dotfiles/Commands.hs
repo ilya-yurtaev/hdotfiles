@@ -1,17 +1,17 @@
 module Dotfiles.Commands where
 
-import Control.Exception (catch, SomeException(..))
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Reader (ReaderT, runReaderT, ask)
+import           Control.Exception (catch, SomeException(..))
+import           Control.Monad (void)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Trans.Reader (ReaderT, runReaderT, ask)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import System.Environment (getArgs)
-import System.Directory (setCurrentDirectory)
-import System.Process (system)
+import           System.Directory (setCurrentDirectory)
+import           System.Environment (getArgs)
+import           System.Process (system)
 
-import Dotfiles
-import Dotfiles.Utils
+import           Dotfiles
+import           Dotfiles.Utils
 
 
 type Args = [String]
@@ -74,10 +74,10 @@ uninstall = dotfiles tracked >>= liftIO . mapM_ unlink
 
 addDotfiles :: Command
 addDotfiles = do
-    dfs <- dotfiles tracked
-    cnds <- candidates
-    save $ Set.union dfs cnds
-    liftIO $ mapM_ sync (Set.difference cnds dfs)
+  dfs <- dotfiles tracked
+  cnds <- candidates
+  save $ Set.union dfs cnds
+  liftIO $ mapM_ sync (Set.difference cnds dfs)
 
 
 forgetDotfiles :: Command
@@ -122,9 +122,9 @@ showStatus = do
     "Invalid:": tab env invalid'
     ) 
   call "git status"
-  where
-      tab :: Env -> Dotfiles -> [String]
-      tab env xs = fmap ("\t" ++) (unpack env xs)
+    where
+        tab :: Env -> Dotfiles -> [String]
+        tab env xs = fmap ("\t" ++) (unpack env xs)
 
 
 save :: Dotfiles -> Command
@@ -136,15 +136,15 @@ save dfs = do
 
 
 commands :: Map.Map String Command
-commands = Map.fromList [
-      ("add", addDotfiles)
-    , ("commit", gitCommitAndPush)
-    , ("forget", forgetDotfiles)
-    , ("install", install)
-    , ("status", showStatus)
-    , ("sync", syncDotfiles)
-    , ("uninstall", uninstall)
-    ]
+commands = Map.fromList
+  [ ("add", addDotfiles)
+  , ("commit", gitCommitAndPush)
+  , ("forget", forgetDotfiles)
+  , ("install", install)
+  , ("status", showStatus)
+  , ("sync", syncDotfiles)
+  , ("uninstall", uninstall)
+  ]
 
 
 showHelp :: IO ()

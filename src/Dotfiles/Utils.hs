@@ -1,9 +1,8 @@
 module Dotfiles.Utils where
 
 import Control.Monad (when)
-import System.FilePath (takeDirectory, (</>))
-import System.Directory (
-    removeFile
+import System.Directory
+  ( removeFile
   , renameFile
   , removeDirectoryRecursive
   , renameDirectory
@@ -13,6 +12,7 @@ import System.Directory (
   , copyFile
   , getDirectoryContents
   )
+import System.FilePath (takeDirectory, (</>))
 
 
 mkdir :: FilePath -> IO ()
