@@ -123,8 +123,9 @@ backup env df = cp (dfSrc df) (envBackupDir env)
 
 -- filters
 filter' :: (Dotfile -> IO Bool) -> Dotfiles -> IO Dotfiles
-filter' p xs = filterM p (Set.toList xs) >>=
-               \dfs -> return $ Set.fromList dfs
+filter' p xs = Set.fromList `fmap` filterM p (Set.toList xs)
+-- filter' p xs = filterM p (Set.toList xs) >>=
+--                \dfs -> return $ Set.fromList dfs
 
 
 valid :: Dotfile -> IO Bool
@@ -132,7 +133,7 @@ valid df = _first [exists (dfSrc df), exists (dfDst df)]
 
 
 invalid :: Dotfile -> IO Bool
-invalid = (not <$>) `liftM` valid
+invalid = fmap not . valid
 
 
 linked :: Dotfile -> IO Bool
