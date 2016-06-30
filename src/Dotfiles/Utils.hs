@@ -55,15 +55,3 @@ cp from to = do
       mkdir t
       entries <- filter (`notElem` [".", ".."]) <$> getDirectoryContents f
       mapM_ (\x -> cp (f </> x) (t </> x)) entries
-
-
-_first :: [IO Bool] -> IO Bool
-_first = (or <$>) . sequence
-
-
-_all :: [IO Bool] -> IO Bool
-_all = (and <$>) . sequence
-
-
-exists :: FilePath -> IO Bool
-exists path = _first [doesFileExist path, doesDirectoryExist path]

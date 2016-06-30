@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Dotfiles.Commands where
 
 import           Control.Exception (catch, SomeException(..))
@@ -6,8 +7,12 @@ import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Reader (ReaderT, runReaderT, ask)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import           System.Directory (setCurrentDirectory)
+import           System.Directory
+  ( getHomeDirectory
+  , setCurrentDirectory
+  , getTemporaryDirectory)
 import           System.Environment (getArgs)
+import           System.FilePath
 import           System.Process (system)
 
 import           Dotfiles
@@ -20,25 +25,23 @@ type Action = ReaderT (Env, Args) IO
 
 type Command = Action ()
 
-type MkDotfiles = Action Dotfiles
 
-
-dotfiles :: (Dotfile -> IO Bool) -> MkDotfiles
-dotfiles f = do
+fromConfig :: Action Dotfiles
+fromConfig = do
   (env, _) <- ask
-  cfg <- liftIO $ readCfg env
-  liftIO $ filter' f (mkDotfiles env cfg)
+  cfg <- liftIO (readCfg env)
+  liftIO $ mkDotfiles env cfg
 
 
-candidates :: MkDotfiles
-candidates = do
+fromArgs :: Action Dotfiles
+fromArgs = do
   (env, args) <- ask
-  return $ mkDotfiles env (Set.fromList args)
+  liftIO $ mkDotfiles env (Set.fromList args)
 
 
 runCommand :: Command -> Args -> IO ()
 runCommand cmd args = do
-  env <- getEnv
+  env <- mkEnv `fmap` getHomeDirectory
   runReaderT cmd (env, args)
 
 
@@ -58,38 +61,41 @@ install = do
                         writeFile (envCfgPath env) defaultCfg
                         readCfg env
                     )
-        dfs <- dotfiles pending
-        liftIO $ mapM_ sync dfs
+        dotfiles <- fromConfig
+        liftIO $ mapM_ sync dotfiles
 
     gitClone repo localDir = do
         (env, _) <- ask
         liftIO $ setCurrentDirectory (envHome env)
+        liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize env localDir]
-        dotfiles pending >>= \dfs -> liftIO $ mapM_ (backup env) dfs >> mapM_ link dfs
+        dotfiles <- fromConfig
+        liftIO $ mapM_ (backup env) dotfiles
+        liftIO $ mapM_ link dotfiles
 
 
 uninstall :: Command
-uninstall = dotfiles tracked >>= liftIO . mapM_ unlink
+uninstall = fromConfig >>= liftIO . mapM_ unlink
 
 
 addDotfiles :: Command
 addDotfiles = do
-  dfs <- dotfiles tracked
-  cnds <- candidates
-  save $ Set.union dfs cnds
-  liftIO $ mapM_ sync (Set.difference cnds dfs)
+  dotfiles <- fromConfig
+  candidates <- fromArgs
+  save $ Set.union dotfiles candidates
+  liftIO $ mapM_ sync (Set.difference candidates dotfiles)
 
 
 forgetDotfiles :: Command
 forgetDotfiles = do
-  dfs <- dotfiles tracked
-  dfs2remove <- candidates
-  save $ Set.difference dfs dfs2remove
-  liftIO $ mapM_ unlink dfs2remove
+  dotfiles <- fromConfig
+  candidates <- fromArgs
+  save $ Set.difference dotfiles candidates
+  liftIO $ mapM_ unlink candidates
 
 
 syncDotfiles :: Command
-syncDotfiles = dotfiles pending >>= liftIO . mapM_ sync
+syncDotfiles = fromConfig >>= liftIO . mapM_ sync
 
 
 gitCommitAndPush :: Command
@@ -112,27 +118,40 @@ call = liftIO . void . system
 showStatus :: Command
 showStatus = do
   (env,  _) <- ask
-  liftIO $ setCurrentDirectory (envRoot env)
-  tracked' <- dotfiles tracked
-  pending' <- dotfiles pending
-  invalid' <- dotfiles invalid
+
+  dotfiles <- fromConfig
+  let tracked' = Set.filter ((==Tracked) . dfStatus) dotfiles
+  let pending' = Set.filter (\df -> dfStatus df == PendingLeft || dfStatus df == PendingRight) dotfiles
+  let invalid' = Set.filter ((==Invalid) . dfStatus) dotfiles
+  let conflict' = Set.filter ((==Conflicts) . dfStatus) dotfiles
+  let alien' = Set.filter ((==Alien) . dfStatus) dotfiles
+  let unknown' = Set.filter ((==Unknown) . dfStatus) dotfiles
+
   liftIO $ mapM_ putStrLn (
-    "Tracked:": tab env tracked' ++
-    "Pending:": tab env pending' ++
-    "Invalid:": tab env invalid'
+    pprint "Tracked:" tracked' ++
+    pprint "Pending:" pending' ++
+    pprint "Conflict:" conflict' ++
+    pprint "Invalid:" invalid' ++
+    pprint "Alien:" alien' ++
+    pprint "Unknown:" unknown'
     ) 
+
+  liftIO $ setCurrentDirectory (envRoot env)
   call "git status"
     where
-        tab :: Env -> Dotfiles -> [String]
-        tab env xs = fmap ("\t" ++) (unpack env xs)
+        pprint header dfs | Set.null dfs = []
+                          | otherwise = header : tab dfs
+        tab xs = fmap ("\t" ++) (map dfName $ Set.toList xs)
 
 
 save :: Dotfiles -> Command
 save dfs = do
   (env, _) <- ask
-  liftIO $ writeFile (envTmpCfgPath env) (unlines $ unpack env dfs)
+  tmpDir <- liftIO $ getTemporaryDirectory `catch` (\(SomeException _) -> return (envHome env))
+  let cfgTmp = tmpDir </> ".dotconfig"
+  liftIO $ writeFile cfgTmp (unlines $ map dfName $ Set.toList dfs)
   liftIO $ rm (envCfgPath env)
-  liftIO $ mv (envTmpCfgPath env) (envCfgPath env)
+  liftIO $ mv cfgTmp (envCfgPath env)
 
 
 commands :: Map.Map String Command
