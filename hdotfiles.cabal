@@ -48,12 +48,15 @@ test-suite hdotfiles-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       DotfilesSpec
+                     , Dotfiles.CommandsSpec
+                     , Dotfiles.UtilsSpec
   build-depends:       base >= 4.7 && < 5
                      , containers
                      , directory
                      , filepath
                      , hdotfiles
-                     , hspec >= 2.2.3
+                     , hspec >= 2.1
                      , QuickCheck >= 2.8
   ghc-options:         -Wall
   default-language:    Haskell2010

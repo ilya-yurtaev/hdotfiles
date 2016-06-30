@@ -53,5 +53,5 @@ cp from to = do
       copyFile f t
     cpD f t = do
       mkdir t
-      entries <- filter (`notElem` [".", ".."]) <$> getDirectoryContents f
+      entries <- filter (`notElem` [".", ".."]) `fmap` getDirectoryContents f
       mapM_ (\x -> cp (f </> x) (t </> x)) entries
