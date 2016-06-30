@@ -61,7 +61,7 @@ install = do
                         writeFile (envCfgPath env) defaultCfg
                         readCfg env
                     )
-        dotfiles <- fromConfig
+        dotfiles <- Set.toList `fmap` fromConfig
         liftIO $ mapM_ sync dotfiles
 
     gitClone repo localDir = do
@@ -69,13 +69,13 @@ install = do
         liftIO $ setCurrentDirectory (envHome env)
         liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize env localDir]
-        dotfiles <- fromConfig
-        liftIO $ mapM_ (backup env) dotfiles
+        dotfiles <- Set.toList `fmap` fromConfig
+        liftIO $ mapM_ (backup env) dotfiles 
         liftIO $ mapM_ link dotfiles
 
 
 uninstall :: Command
-uninstall = fromConfig >>= liftIO . mapM_ unlink
+uninstall = fromConfig >>= liftIO . mapM_ unlink . Set.toList
 
 
 addDotfiles :: Command
@@ -83,7 +83,7 @@ addDotfiles = do
   dotfiles <- fromConfig
   candidates <- fromArgs
   save $ Set.union dotfiles candidates
-  liftIO $ mapM_ sync (Set.difference candidates dotfiles)
+  liftIO $ mapM_ sync (Set.toList $ Set.difference candidates dotfiles)
 
 
 forgetDotfiles :: Command
@@ -91,11 +91,11 @@ forgetDotfiles = do
   dotfiles <- fromConfig
   candidates <- fromArgs
   save $ Set.difference dotfiles candidates
-  liftIO $ mapM_ unlink candidates
+  liftIO $ mapM_ unlink (Set.toList candidates)
 
 
 syncDotfiles :: Command
-syncDotfiles = fromConfig >>= liftIO . mapM_ sync
+syncDotfiles = fromConfig >>= liftIO . mapM_ sync . Set.toList
 
 
 gitCommitAndPush :: Command

@@ -57,7 +57,7 @@ test-suite hdotfiles-test
                      , filepath
                      , hdotfiles
                      , hspec >= 2.1
-                     , QuickCheck >= 2.8
+                     , QuickCheck >= 2.7
   ghc-options:         -Wall
   default-language:    Haskell2010
 
