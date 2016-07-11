@@ -40,9 +40,9 @@ spec = describe "Dotfiles" $ do
       dfStatus validDf `shouldBe` Tracked
       -- make PendingLeft: src is solid file. and no dst. that's all
       unlink validDf
-      exists (dfDst validDf) `shouldReturn` False
+      exists (dfDst validDf) `shouldReturn` True -- keep dst
       pendingL <- mkDotfile env valid
-      dfStatus pendingL `shouldBe` PendingLeft
+      dfStatus pendingL `shouldBe` PendingRight -- src and dst are equal
       -- make PendingRight: there is no src and valid dst
       sync pendingL
       rm (dfSrc pendingL)
