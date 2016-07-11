@@ -78,7 +78,8 @@ install = do
         liftIO $ setCurrentDirectory (envRoot env)
         liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize (envRoot env) localDir]
-        liftIO $ createSymbolicLink (replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
+        liftIO $ createSymbolicLink (
+          replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
         dotfiles <- Set.toList `fmap` fromConfig
         liftIO $ mapM_ (backup env) dotfiles 
         liftIO $ mapM_ link dotfiles
@@ -110,7 +111,7 @@ syncDotfiles = fromConfig >>= liftIO . mapM_ sync . Set.toList
 
 resolve :: Command
 resolve = do
-  (env, args) <- ask
+  (_, args) <- ask
   dotfiles <- (filter (\df -> dfStatus df == Conflicts) . Set.toList) `fmap` fromConfig
   case args of
     (cmd:_) -> case cmd of
@@ -215,9 +216,3 @@ runApp = do
     (x:xs) -> case Map.lookup x commands of
       Just cmd -> runCommand env cmd xs
       Nothing -> showHelp
-  
-
--- runAppWith :: Config -> IO ()
--- runAppWith cfg = do
---   args <- getArgs
---   env <- mkEnv `fmap` getHomeDirectory
