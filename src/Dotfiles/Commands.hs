@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Dotfiles.Commands where
 
 import           Control.Exception (catch, SomeException(..))
@@ -7,6 +8,8 @@ import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Reader (ReaderT, runReaderT, ask)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import           Data.String.Utils (replace)
+import qualified Data.Version as Version (showVersion)
 import           System.Directory
   ( getHomeDirectory
   , setCurrentDirectory
@@ -17,6 +20,8 @@ import           System.Process (system)
 
 import           Dotfiles
 import           Dotfiles.Utils
+  
+import           Paths_hdotfiles (version)
 
 
 type Args = [String]
@@ -39,10 +44,13 @@ fromArgs = do
   liftIO $ mkDotfiles env (Set.fromList args)
 
 
-runCommand :: Command -> Args -> IO ()
-runCommand cmd args = do
-  env <- mkEnv `fmap` getHomeDirectory
+runCommand :: Env -> Command -> Args -> IO ()
+runCommand env cmd args = do
   runReaderT cmd (env, args)
+
+
+defaultCfg :: [String]
+defaultCfg = [""]
 
 
 install :: Command
@@ -51,24 +59,25 @@ install = do
   case args of
     [] -> doSimpleInstall
     -- TODO (x:y:_) -> gitClone x y
-    (repoURL:_) -> gitClone repoURL (envRoot env)
+    (repoURL:_) -> gitClone repoURL (envAppDir env)
   where 
     doSimpleInstall = do
         (env, _) <- ask
-        liftIO $ mapM_ mkdir [envRoot env, envFilesDir env]
+        liftIO $ mapM_ mkdir [envAppDir env, envStorage env]
         _ <- liftIO $ readCfg env
             `catch` (\(SomeException _) -> do
-                        writeFile (envCfgPath env) defaultCfg
-                        readCfg env
+                        writeFile (envCfgPath env) (unlines defaultCfg)
+                        return (Set.fromList defaultCfg)
                     )
-        dotfiles <- Set.toList `fmap` fromConfig
-        liftIO $ mapM_ sync dotfiles
+        dotfiles <- fromConfig
+        liftIO $ mapM_ sync (Set.toList dotfiles)
 
     gitClone repo localDir = do
         (env, _) <- ask
-        liftIO $ setCurrentDirectory (envHome env)
+        liftIO $ setCurrentDirectory (envRoot env)
         liftIO $ mkdir (envBackupDir env)
-        call $ unwords ["git clone", repo, normalize env localDir]
+        call $ unwords ["git clone", repo, normalize (envRoot env) localDir]
+        link (replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
         dotfiles <- Set.toList `fmap` fromConfig
         liftIO $ mapM_ (backup env) dotfiles 
         liftIO $ mapM_ link dotfiles
@@ -98,10 +107,33 @@ syncDotfiles :: Command
 syncDotfiles = fromConfig >>= liftIO . mapM_ sync . Set.toList
 
 
+resolve :: Command
+resolve = do
+  (env, args) <- ask
+  dotfiles <- (filter (\df -> dfStatus df == Conflicts) . Set.toList) `fmap` fromConfig
+  case args of
+    (cmd:_) -> case cmd of
+                "local" -> do
+                  let dfs = map (\df -> df {dfStatus=PendingLeft}) dotfiles
+                  sync' dfs
+
+                "remote" -> do
+                  let dfs = map (\df -> df {dfStatus=PendingRight}) dotfiles
+                  sync' dfs
+                  
+                _ -> resolveHelp
+    _ -> resolveHelp
+    where resolveHelp = liftIO $ putStrLn $ unlines
+                                    ["possible args to `resolve` are:"
+                                    , "\tlocal  -- keep local files (ACHTUNG! remote files will be replaced)"
+                                    , "\tremote -- use remote files (ACHTUNG! local files will be replaced)"]
+          sync' = liftIO . mapM_ sync
+
+
 gitCommitAndPush :: Command
 gitCommitAndPush = do
   (env, args) <- ask
-  liftIO . setCurrentDirectory $ envRoot env
+  liftIO . setCurrentDirectory $ envAppDir env
   call "git add ."
   call $ unwords ["git commit -am ", msg args]
   call "git push"
@@ -136,30 +168,31 @@ showStatus = do
     pprint "Unknown:" unknown'
     ) 
 
-  liftIO $ setCurrentDirectory (envRoot env)
+  liftIO $ setCurrentDirectory (envAppDir env)
   call "git status"
     where
         pprint header dfs | Set.null dfs = []
                           | otherwise = header : tab dfs
-        tab xs = fmap ("\t" ++) (map dfName $ Set.toList xs)
+        tab xs = fmap ("\t" ++) (unpack xs)
 
 
 save :: Dotfiles -> Command
 save dfs = do
   (env, _) <- ask
-  tmpDir <- liftIO $ getTemporaryDirectory `catch` (\(SomeException _) -> return (envHome env))
+  tmpDir <- liftIO $ getTemporaryDirectory `catch` (\(SomeException _) -> return (envRoot env))
   let cfgTmp = tmpDir </> ".dotconfig"
-  liftIO $ writeFile cfgTmp (unlines $ map dfName $ Set.toList dfs)
+  liftIO $ writeFile cfgTmp (unlines $ unpack dfs)
   liftIO $ rm (envCfgPath env)
   liftIO $ mv cfgTmp (envCfgPath env)
-
-
+  
+                     
 commands :: Map.Map String Command
 commands = Map.fromList
   [ ("add", addDotfiles)
   , ("commit", gitCommitAndPush)
   , ("forget", forgetDotfiles)
   , ("install", install)
+  , ("resolve", resolve)
   , ("status", showStatus)
   , ("sync", syncDotfiles)
   , ("uninstall", uninstall)
@@ -167,15 +200,23 @@ commands = Map.fromList
 
 
 showHelp :: IO ()
-showHelp =
+showHelp = do
+  putStrLn $ unwords ["hdotfiles ", Version.showVersion version]
   mapM_ putStrLn $ "Available commands:" : fmap ("\t- "++) (Map.keys commands)
 
 
 runApp :: IO ()
 runApp = do
   args <- getArgs
+  env <- mkEnv `fmap` getHomeDirectory
   case args of
     [] -> showHelp
     (x:xs) -> case Map.lookup x commands of
-      Just cmd -> runCommand cmd xs
+      Just cmd -> runCommand env cmd xs
       Nothing -> showHelp
+  
+
+-- runAppWith :: Config -> IO ()
+-- runAppWith cfg = do
+--   args <- getArgs
+--   env <- mkEnv `fmap` getHomeDirectory
