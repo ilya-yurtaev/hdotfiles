@@ -16,6 +16,7 @@ import           System.Directory
   , getTemporaryDirectory)
 import           System.Environment (getArgs)
 import           System.FilePath
+import           System.Posix (createSymbolicLink)
 import           System.Process (system)
 
 import           Dotfiles
@@ -77,7 +78,7 @@ install = do
         liftIO $ setCurrentDirectory (envRoot env)
         liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize (envRoot env) localDir]
-        link (replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
+        liftIO $ createSymbolicLink (replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
         dotfiles <- Set.toList `fmap` fromConfig
         liftIO $ mapM_ (backup env) dotfiles 
         liftIO $ mapM_ link dotfiles
