@@ -8,7 +8,7 @@ import System.IO.Temp (withSystemTempDirectory)
 
 
 exists :: FilePath -> IO Bool
-exists path = or <$> sequence [doesFileExist path, doesDirectoryExist path]
+exists path = or `fmap` sequence [doesFileExist path, doesDirectoryExist path]
 
 withTmpDir :: (FilePath -> IO a) -> IO a
 withTmpDir = withSystemTempDirectory "hdotfiles_test"
