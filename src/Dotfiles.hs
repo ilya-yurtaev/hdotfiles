@@ -136,7 +136,7 @@ sync df =
       rm (dfSrc df) -- if there is a link -- it's 100% broken
       link df
     PendingLeft  -> do
-      cp (dfSrc df) (dfDst df)
+      cp (dfSrc df) (dfDst df) -- it will overwrite dfDst if it exist
       rm (dfSrc df)
       link df
     _            -> return ()
@@ -151,7 +151,7 @@ unlink df =
   case dfStatus df of
     Tracked -> do
       rm (dfSrc df)
-      mv (dfDst df) (dfSrc df)
+      cp (dfDst df) (dfSrc df)
     _       -> return ()
 
 

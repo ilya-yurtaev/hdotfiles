@@ -46,8 +46,7 @@ fromArgs = do
 
 
 runCommand :: Env -> Command -> Args -> IO ()
-runCommand env cmd args = do
-  runReaderT cmd (env, args)
+runCommand env cmd args = runReaderT cmd (env, args)
 
 
 defaultCfg :: [String]
@@ -126,7 +125,7 @@ resolve = do
                 _ -> resolveHelp
     _ -> resolveHelp
     where resolveHelp = liftIO $ putStrLn $ unlines
-                                    ["possible args to `resolve` are:"
+                                    [ "possible args to `resolve` are:"
                                     , "\tlocal  -- keep local files (ACHTUNG! remote files will be replaced)"
                                     , "\tremote -- use remote files (ACHTUNG! local files will be replaced)"]
           sync' = liftIO . mapM_ sync

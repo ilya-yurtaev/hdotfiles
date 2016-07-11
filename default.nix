@@ -1,9 +1,9 @@
 { mkDerivation, base, containers, directory, filepath, hspec
-, MissingH, process, stdenv, transformers, unix
+, MissingH, process, stdenv, temporary, transformers, unix
 }:
 mkDerivation {
   pname = "hdotfiles";
-  version = "0.2.0.0";
+  version = "0.3.0.0";
   src = ./.;
   isLibrary = true;
   isExecutable = true;
@@ -13,7 +13,8 @@ mkDerivation {
   ];
   executableHaskellDepends = [ base ];
   testHaskellDepends = [
-    base containers directory filepath hspec transformers
+    base containers directory filepath hspec temporary transformers
+    unix
   ];
   homepage = "http://github.com/ilya-yurtaev/hdotfiles#readme";
   description = "Simple dotfiles management tool";
