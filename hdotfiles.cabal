@@ -63,7 +63,7 @@ test-suite hdotfiles-test
                      , filepath
                      , hdotfiles
                      , hspec >= 2.1
-                     , temporary >= 1.2.0.4
+                     , temporary >= 1.2.0
                      , transformers
                      , unix
 
