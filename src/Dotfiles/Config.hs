@@ -2,6 +2,7 @@
 
 module Dotfiles.Config where
 
+import           Control.Exception (catch, SomeException(..))
 import           Data.Maybe
 import qualified Data.Set as Set
 import           Data.String.Utils (replace)
@@ -10,7 +11,8 @@ import qualified Data.Yaml as Yaml
 import           GHC.Generics
 import           System.Directory (getHomeDirectory, getTemporaryDirectory)
 import           System.FilePath ((</>))
-  
+import           System.Posix (readSymbolicLink)
+
 import           Dotfiles
 import           Dotfiles.Utils
 
@@ -73,7 +75,12 @@ writeConfig = Yaml.encodeFile
 saveConfig :: Env -> [String] -> IO ()
 saveConfig env names = do
   writeConfig tmpPath cfg
-  rm (envCfgPath env)
-  mv tmpPath (envCfgPath env)
-  where cfg = Config {appDir = Just (envAppDir env), dfNames = names}
+  cfgPath <- getTargetPath (envCfgPath env)
+  rm cfgPath
+  mv tmpPath cfgPath
+  where cfg = Config {appDir = Just $ denormalize (envRoot env) (envAppDir env), dfNames = names}
         tmpPath = replace (envRoot env) (envTmp env) (envCfgPath env) 
+
+
+getTargetPath :: FilePath -> IO FilePath
+getTargetPath path = readSymbolicLink path `catch` (\(SomeException _) -> return path)

@@ -5,7 +5,6 @@ import System.Posix (createSymbolicLink, readSymbolicLink)
 import Test.Hspec
 
 import Dotfiles
-import Dotfiles.Commands
 import Dotfiles.Utils
 
 import SpecHelper
