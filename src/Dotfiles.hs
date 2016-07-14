@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Dotfiles where
 
 import           Control.Exception (catch)
@@ -9,7 +7,7 @@ import           Data.String.Utils (replace)
 import           Dotfiles.Utils
 import           GHC.IO.Exception
 import           System.Directory (doesFileExist)
-import           System.FilePath ((</>))
+
 import           System.IO.Error (isDoesNotExistError, ioeGetErrorType)
 import           System.Posix (readSymbolicLink, createSymbolicLink)
 
@@ -26,28 +24,28 @@ data DotfileStatus =
 
 
 data Dotfile = Dotfile
-  { dfName :: String          -- ^ relative to `envRoot` path: ~\/.vimrc
-  , dfSrc :: FilePath         -- ^ expanded path to soft link: \/`envRoot`\/.vimrc
-  , dfDst :: FilePath         -- ^ expanded path to solid file: \/`envRoot`\/`envAppDir`\/.vimrc
-  , dfStatus :: DotfileStatus
-  } deriving (Show, Eq, Ord)
+  { dfName :: String          -- ^ short path relative to `envRoot`: ~\/.vimrc
+  , dfSrc :: FilePath         -- ^ absolute path to soft link: \/`envRoot`\/.vimrc
+  , dfDst :: FilePath         -- ^ absolute path to solid file: \/`envRoot`\/`envAppDir`\/.vimrc
+  , dfStatus :: DotfileStatus -- ^ status
+  } deriving (Eq, Ord)
 
 
 type Dotfiles = Set Dotfile
 
 
+type Names = Set String
+
+
 data Env = Env
-  { envRoot :: FilePath      -- ^ root path for links, it should be %HOME%, so it is by default
+  { envRoot :: FilePath      -- ^ root path for links, it is %HOME% by default
   , envAppDir :: FilePath    -- ^ application directory, it is \/`envRoot`\/.hdotfiles/ by default
   , envTmp :: FilePath       -- ^ system %TEMP%
   , envStorage :: FilePath   -- ^ directory where target files stored, by default it is \/`envRoot`\/`envAppDir`\/.files
-  , envCfgPath :: FilePath   -- ^ path to config, \/`envRoot`\/.dotconfig by default
+  , envCfgPath :: FilePath   -- ^ config path. it __must__ be \/`envRoot`\/.dotconfig.yml
+  , envDotfiles :: Names     -- ^ Set of dotfiles names
   , envBackupDir :: FilePath -- ^ \/`envRoot`\/`envAppDir`\/backups
-  } deriving (Show)
-
-
--- | It's actually .dotconfig content
-type Names = Set String
+  }
 
 
 -- | Main magic
@@ -89,23 +87,6 @@ getDotfileStatus src dst = do
                 isInvalidArgument _               = False
 
 
-mkEnv :: FilePath -> Env
-mkEnv root =
-  let appDir = root </> ".dotfiles"
-      in Env
-        { envRoot      = root
-        , envAppDir    = appDir
-        , envTmp       = appDir
-        , envStorage   = appDir </> "files"
-        , envCfgPath   = root </> ".dotconfig"
-        , envBackupDir = appDir </> "backups"
-        }
-
-
-readCfg :: Env -> IO Names
-readCfg env = (Set.fromList . filter (not . null) . lines) `fmap` readFile (envCfgPath env)
-
-
 mkDotfile :: Env -> String -> IO Dotfile
 mkDotfile env name = do
   status <- getDotfileStatus src dst
@@ -118,7 +99,7 @@ mkDotfile env name = do
   where src   = normalize home name
         dst   = replace home (envStorage env) src
         name' = denormalize home src
-        home = envRoot env
+        home  = envRoot env
 
 
 mkDotfiles :: Env -> Names -> IO Dotfiles
@@ -136,7 +117,8 @@ sync df =
       rm (dfSrc df) -- if there is a link -- it's 100% broken
       link df
     PendingLeft  -> do
-      cp (dfSrc df) (dfDst df) -- it will overwrite dfDst if it exist
+      rm (dfDst df)
+      cp (dfSrc df) (dfDst df)
       rm (dfSrc df)
       link df
     _            -> return ()
@@ -156,4 +138,4 @@ unlink df =
 
 
 backup :: Env -> Dotfile -> IO ()
-backup env df = cp (dfSrc df) (envBackupDir env)
+backup env df = mv (dfSrc df) (envBackupDir env)

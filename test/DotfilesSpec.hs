@@ -1,73 +1,134 @@
 module DotfilesSpec where
 
-import System.Posix (createSymbolicLink)
+import System.FilePath ((</>))
+import System.Posix (createSymbolicLink, readSymbolicLink)
 import Test.Hspec
 
 import Dotfiles
 import Dotfiles.Commands
 import Dotfiles.Utils
 
-import SpecHelper (exists, withTmpDir)
-
+import SpecHelper
 
 
 spec :: Spec
 spec = describe "Dotfiles" $ do
-  around withTmpDir $ do
-    it "env init" $ \tmpDir -> do
-      let env = mkEnv tmpDir
-      putStrLn $ show env -- covers show env
-      exists (envAppDir env) `shouldReturn` False
-      runCommand env install []
-      exists (envAppDir env) `shouldReturn` True
-      exists (envCfgPath env) `shouldReturn` True
-
-    it "determines dotfiles status" $ \tmpDir -> do
-      let env = mkEnv tmpDir
-      runCommand env install []
-      let valid = "~/.validrc"
-      -- no src and dst - so it's invalid
-      df <- mkDotfile env valid
+  around withEnv $ do
+    it "determines invalid status" $ \env -> do
+      let path = "~/.somepath"
+      df <- mkDotfile env path
+      dfName df `shouldBe` path
       dfStatus df `shouldBe` Invalid
-      dfName df `shouldBe` valid
       exists (dfSrc df) `shouldReturn` False
-      writeFile (dfDst df) ""
-      exists (dfDst df) `shouldReturn` True
-      link df
+      exists (dfDst df) `shouldReturn` False
+      
+    it "determines tracked status" $ \env -> do
+      let dst = envStorage env </> ".validpath"
+      let src = envRoot env </> ".validpath"
+      writeFile dst "some content"
+      createSymbolicLink dst src
+      df <- mkDotfile env "~/.validpath"
+      dfSrc df `shouldBe` src
+      dfDst df `shouldBe` dst
       exists (dfSrc df) `shouldReturn` True
-      -- this one must be tracked
-      validDf <- mkDotfile env valid
-      dfStatus validDf `shouldBe` Tracked
-      -- make PendingLeft: src is solid file. and no dst. that's all
-      unlink validDf
-      exists (dfDst validDf) `shouldReturn` True -- keep dst
-      pendingL <- mkDotfile env valid
-      dfStatus pendingL `shouldBe` PendingRight -- src and dst are equal
-      -- make PendingRight: there is no src and valid dst
-      sync pendingL
-      rm (dfSrc pendingL)
-      pendingR <- mkDotfile env valid
-      dfStatus pendingR `shouldBe` PendingRight
-      -- make Conflict: there is some solid file instead of link. dst is present
-      writeFile (dfSrc pendingR) "adfs"
-      conflictDf <- mkDotfile env (dfSrc pendingR)
-      dfStatus conflictDf `shouldBe` Conflicts
-      -- PendingRight when src and dst are solid files and they are equal
-      let same_file = "~/samefile"
-      two_versions <- mkDotfile env same_file
-      writeFile (dfSrc two_versions) "adfs"
-      writeFile (dfDst two_versions) "adfs"
-      resolveDf <- mkDotfile env (dfSrc two_versions)
-      dfStatus resolveDf `shouldBe` PendingRight
-      -- alien
-      rm (dfSrc conflictDf)
-      let alien_target = (normalize (envRoot env) "~/alien")
-      let target = (normalize (envRoot env) "~/target")
-      writeFile alien_target ""
-      writeFile target ""
-      alienDf <- mkDotfile env target
-      sync alienDf
-      rm (dfSrc alienDf)
-      createSymbolicLink alien_target (dfSrc alienDf)
-      alienDf' <- mkDotfile env target
-      dfStatus alienDf' `shouldBe` Alien
+      exists (dfDst df) `shouldReturn` True
+      readSymbolicLink src `shouldReturn` dst
+      dfStatus df `shouldBe` Tracked
+
+    it "determines pending left status" $ \env -> do
+      let src = envRoot env </> ".pending_left"
+      let dst = envStorage env </> ".pending_left"
+      writeFile src "some content"
+      df <- mkDotfile env "~/.pending_left"
+      dfSrc df `shouldBe` src
+      dfDst df `shouldBe` dst
+      exists (dfSrc df) `shouldReturn` True
+      exists (dfDst df) `shouldReturn` False
+      dfStatus df `shouldBe` PendingLeft
+
+    it "determines pending left status" $ \env -> do
+      let src = envRoot env </> ".pending_right"
+      let dst = envStorage env </> ".pending_right"
+      writeFile dst "some content"
+      df <- mkDotfile env "~/.pending_right"
+      dfSrc df `shouldBe` src
+      dfDst df `shouldBe` dst
+      exists (dfSrc df) `shouldReturn` False
+      exists (dfDst df) `shouldReturn` True
+      dfStatus df `shouldBe` PendingRight
+
+    it "determines conflict status" $ \env -> do
+      let src = envRoot env </> ".conflict"
+      let dst = envStorage env </> ".conflict"
+      writeFile src "local file content"
+      writeFile dst "stored file content"
+      df <- mkDotfile env "~/.conflict"
+      exists (dfSrc df) `shouldReturn` True
+      exists (dfDst df) `shouldReturn` True
+      cmp src dst `shouldReturn` False
+      dfStatus df `shouldBe` Conflicts
+
+    it "determines alien (src link doesnt lead to dst)" $ \env -> do
+      let src = envRoot env </> ".alien_link"
+      let alien_target = envRoot env </> "alien_target"
+      let dst = envStorage env </> ".alien_link"
+      writeFile dst "stored file content"
+      writeFile alien_target "alient file content"
+      createSymbolicLink alien_target src
+      exists src `shouldReturn` True
+      readSymbolicLink src `shouldReturn` alien_target
+      df <- mkDotfile env "~/.alien_link"
+      exists (dfDst df) `shouldReturn` True
+      dfStatus df `shouldBe` Alien
+
+    it "covers two equal files (pending right)" $ \env -> do
+      let src = envRoot env </> ".equal"
+      let dst = envStorage env </> ".equal"
+      writeFile src "same content"
+      writeFile dst "same content"
+      df <- mkDotfile env "~/.equal"
+      exists (dfSrc df) `shouldReturn` True
+      exists (dfDst df) `shouldReturn` True
+      cmp src dst `shouldReturn` True
+      dfStatus df `shouldBe` PendingRight
+
+    it "covers when src file is a valid link and there is no dst (pending left)" $ \env -> do
+      let src = envRoot env </> ".link"
+      let target = envRoot env </> ".target"
+      writeFile target "target content"
+      createSymbolicLink target src
+      df <- mkDotfile env "~/.link"
+      exists (dfSrc df) `shouldReturn` True
+      exists (dfDst df) `shouldReturn` False
+      dfStatus df `shouldBe` PendingLeft
+
+    it "covers broken link (pending right)" $ \env -> do
+      let src = envRoot env </> ".broken_link"
+      let doesnotexist = envRoot env </> "doesnotexist"
+      let dst = envStorage env </> ".broken_link"
+      writeFile dst "stored file content"
+      writeFile doesnotexist ""
+      createSymbolicLink doesnotexist src
+      exists src `shouldReturn` True
+      readSymbolicLink src `shouldReturn` doesnotexist
+      rm doesnotexist
+      exists doesnotexist `shouldReturn` False
+      df <- mkDotfile env "~/.broken_link"
+      exists (dfDst df) `shouldReturn` True
+      dfStatus df `shouldBe` PendingRight
+
+    it "covers broken link (invalid)" $ \env -> do
+      let src = envRoot env </> ".broken_link"
+      let doesnotexist = envRoot env </> "doesnotexist"
+      let dst = envStorage env </> ".broken_link"
+      writeFile dst "stored file content"
+      writeFile doesnotexist ""
+      createSymbolicLink doesnotexist src
+      exists src `shouldReturn` True
+      readSymbolicLink src `shouldReturn` doesnotexist
+      rm doesnotexist
+      rm dst
+      exists dst `shouldReturn` False
+      exists doesnotexist `shouldReturn` False
+      df <- mkDotfile env "~/.broken_link"
+      dfStatus df `shouldBe` Invalid

@@ -1,8 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Dotfiles.Commands where
 
-import           Control.Exception (catch, SomeException(..))
+
 import           Control.Monad (void)
 import           Control.Monad.IO.Class (liftIO)
 import           Control.Monad.Trans.Reader (ReaderT, runReaderT, ask)
@@ -10,16 +8,14 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Data.String.Utils (replace)
 import qualified Data.Version as Version (showVersion)
-import           System.Directory
-  ( getHomeDirectory
-  , setCurrentDirectory
-  , getTemporaryDirectory)
+import           System.Directory (setCurrentDirectory)
 import           System.Environment (getArgs)
-import           System.FilePath
+
 import           System.Posix (createSymbolicLink)
 import           System.Process (system)
 
 import           Dotfiles
+import           Dotfiles.Config
 import           Dotfiles.Utils
   
 import           Paths_hdotfiles (version)
@@ -35,8 +31,7 @@ type Command = Action ()
 fromConfig :: Action Dotfiles
 fromConfig = do
   (env, _) <- ask
-  cfg <- liftIO (readCfg env)
-  liftIO $ mkDotfiles env cfg
+  liftIO $ mkDotfiles env (envDotfiles env)
 
 
 fromArgs :: Action Dotfiles
@@ -47,10 +42,6 @@ fromArgs = do
 
 runCommand :: Env -> Command -> Args -> IO ()
 runCommand env cmd args = runReaderT cmd (env, args)
-
-
-defaultCfg :: [String]
-defaultCfg = [""]
 
 
 install :: Command
@@ -64,11 +55,6 @@ install = do
     doSimpleInstall = do
         (env, _) <- ask
         liftIO $ mapM_ mkdir [envAppDir env, envStorage env]
-        _ <- liftIO $ readCfg env
-            `catch` (\(SomeException _) -> do
-                        writeFile (envCfgPath env) (unlines defaultCfg)
-                        return (Set.fromList defaultCfg)
-                    )
         dotfiles <- fromConfig
         liftIO $ mapM_ sync (Set.toList dotfiles)
 
@@ -78,7 +64,7 @@ install = do
         liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize (envRoot env) localDir]
         liftIO $ createSymbolicLink (
-          replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig first
+          replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig.yml first
         dotfiles <- Set.toList `fmap` fromConfig
         liftIO $ mapM_ (backup env) dotfiles 
         liftIO $ mapM_ link dotfiles
@@ -180,13 +166,9 @@ showStatus = do
 save :: Dotfiles -> Command
 save dfs = do
   (env, _) <- ask
-  tmpDir <- liftIO $ getTemporaryDirectory `catch` (\(SomeException _) -> return (envRoot env))
-  let cfgTmp = tmpDir </> ".dotconfig"
-  liftIO $ writeFile cfgTmp (unlines $ unpack dfs)
-  liftIO $ rm (envCfgPath env)
-  liftIO $ mv cfgTmp (envCfgPath env)
-  
-                     
+  liftIO $ saveConfig env (unpack dfs)
+
+
 commands :: Map.Map String Command
 commands = Map.fromList
   [ ("add", addDotfiles)
@@ -204,12 +186,12 @@ showHelp :: IO ()
 showHelp = do
   putStrLn $ unwords ["hdotfiles ", Version.showVersion version]
   mapM_ putStrLn $ "Available commands:" : fmap ("\t- "++) (Map.keys commands)
-
+  
 
 runApp :: IO ()
 runApp = do
   args <- getArgs
-  env <- mkEnv `fmap` getHomeDirectory
+  env <- defaultEnv
   case args of
     [] -> showHelp
     (x:xs) -> case Map.lookup x commands of

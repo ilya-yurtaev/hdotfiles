@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Dotfiles
                      , Dotfiles.Commands
+                     , Dotfiles.Config
                      , Dotfiles.Utils
                      , Paths_hdotfiles
 
@@ -28,6 +29,7 @@ library
                      , process
                      , transformers
                      , unix
+                     , yaml
 
   default-language:    Haskell2010
 
@@ -52,6 +54,7 @@ test-suite hdotfiles-test
   main-is:             Spec.hs
   other-modules:       DotfilesSpec
                      , Dotfiles.CommandsSpec
+                     , Dotfiles.ConfigSpec
                      , Dotfiles.UtilsSpec
 
   build-depends:       base >= 4.7 && < 5
@@ -60,12 +63,11 @@ test-suite hdotfiles-test
                      , filepath
                      , hdotfiles
                      , hspec >= 2.1
+                     , temporary >= 1.2.0.4
                      , transformers
-                     , temporary
                      , unix
 
   ghc-options:         -Wall
-                       -Werror
                        -threaded
 
   default-language:    Haskell2010
