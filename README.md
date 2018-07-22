@@ -1,7 +1,8 @@
 # hdotfiles
-[![Build status] (https://api.travis-ci.org/ilya-yurtaev/hdotfiles.svg?branch=master)] (https://travis-ci.org/ilya-yurtaev/hdotfiles)
 
-> This is my hdotfiles. There are many [many like it](https://dotfiles.github.io), but this one is mine.
+[![Build status](https://api.travis-ci.org/ilya-yurtaev/hdotfiles.svg?branch=master)](https://travis-ci.org/ilya-yurtaev/hdotfiles)
+
+> This is my hdotfiles. There are [many like it](https://dotfiles.github.io), but this one is mine.
 
 Simple dotfiles management tool. Consider it as just a CRUD over dotfiles list.
 
