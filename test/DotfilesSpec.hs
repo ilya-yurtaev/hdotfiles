@@ -20,7 +20,7 @@ spec = describe "Dotfiles" $ do
       dfStatus df `shouldBe` Invalid
       exists (dfSrc df) `shouldReturn` False
       exists (dfDst df) `shouldReturn` False
-      
+
     it "determines tracked status" $ \env -> do
       let dst = envStorage env </> ".validpath"
       let src = envRoot env </> ".validpath"
@@ -45,7 +45,7 @@ spec = describe "Dotfiles" $ do
       exists (dfDst df) `shouldReturn` False
       dfStatus df `shouldBe` PendingLeft
 
-    it "determines pending left status" $ \env -> do
+    it "determines pending right status" $ \env -> do
       let src = envRoot env </> ".pending_right"
       let dst = envStorage env </> ".pending_right"
       writeFile dst "some content"

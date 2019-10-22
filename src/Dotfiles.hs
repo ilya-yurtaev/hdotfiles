@@ -37,6 +37,9 @@ type Dotfiles = Set Dotfile
 type Names = Set String
 
 
+data MaybeLink l = Link l | DoesNotExist | InvalidLink | Other
+
+
 data Env = Env
   { envRoot :: FilePath      -- ^ root path for links, it is %HOME% by default
   , envAppDir :: FilePath    -- ^ application directory, it is \/`envRoot`\/.hdotfiles/ by default
@@ -51,35 +54,35 @@ data Env = Env
 -- | Main magic
 getDotfileStatus :: FilePath -> FilePath -> IO DotfileStatus
 getDotfileStatus src dst = do
-  lnk <- readSymbolicLink src `catch` handleLinkError
+  lnk <- (Link <$> readSymbolicLink src) `catch` handleLinkError
   copied <- doesFileExist dst
   determine lnk copied
-  where determine "doesNotExist" True  = return PendingRight
-        determine "doesNotExist" False = return Invalid
-        determine "isFile" True = do
-          sameFile <- cmp src dst 
+  where determine DoesNotExist True  = return PendingRight
+        determine DoesNotExist False = return Invalid
+        determine InvalidLink True = do
+          sameFile <- cmp src dst
           return $ if sameFile
                       then PendingRight
                       else Conflicts
-        determine "isFile" False       = return PendingLeft
-        determine "" _                 = return Unknown
-        determine somelink True = do
+        determine InvalidLink False       = return PendingLeft
+        determine Other _            = return Unknown
+        determine (Link somelink) True = do
           lnk_src_exist <- doesFileExist somelink
           return $ if lnk_src_exist
-                      then 
+                      then
                          if somelink == dst
                            then Tracked
                            else Alien
                       else PendingRight -- broken link
-        determine somelink False = do
+        determine (Link somelink) False = do
           lnk_src_exist <- doesFileExist somelink
           return $ if lnk_src_exist
                       then PendingLeft
                       else Invalid -- link is broken, no dst
 
-        handleLinkError e | isDoesNotExistError e = return "doesNotExist"
-                          | isInvalidLink e       = return "isFile"
-                          | otherwise             = return ""
+        handleLinkError e | isDoesNotExistError e = return DoesNotExist
+                          | isInvalidLink e       = return InvalidLink
+                          | otherwise             = return Other
 
         isInvalidLink :: IOError -> Bool
         isInvalidLink = isInvalidArgument . ioeGetErrorType

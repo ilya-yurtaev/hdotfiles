@@ -17,7 +17,7 @@ import           System.Process (system)
 import           Dotfiles
 import           Dotfiles.Config
 import           Dotfiles.Utils
-  
+
 import           Paths_hdotfiles (version)
 
 
@@ -51,7 +51,7 @@ install = do
     [] -> doSimpleInstall
     -- TODO (x:y:_) -> gitClone x y
     (repoURL:_) -> gitClone repoURL (envAppDir env)
-  where 
+  where
     doSimpleInstall = do
         (env, _) <- ask
         liftIO $ mapM_ mkdir [envAppDir env, envStorage env]
@@ -64,9 +64,10 @@ install = do
         liftIO $ mkdir (envBackupDir env)
         call $ unwords ["git clone", repo, normalize (envRoot env) localDir]
         liftIO $ createSymbolicLink (
-          replace (envStorage env) (envRoot env) (envCfgPath env)) (envCfgPath env) -- link .dotconfig.yml first
+            replace (envStorage env) (envRoot env) (envCfgPath env)
+          ) (envCfgPath env) -- link .dotconfig.yml first
         dotfiles <- Set.toList `fmap` fromConfig
-        liftIO $ mapM_ (backup env) dotfiles 
+        liftIO $ mapM_ (backup env) dotfiles
         liftIO $ mapM_ link dotfiles
 
 
@@ -107,7 +108,7 @@ resolve = do
                 "remote" -> do
                   let dfs = map (\df -> df {dfStatus=PendingRight}) dotfiles
                   sync' dfs
-                  
+
                 _ -> resolveHelp
     _ -> resolveHelp
     where resolveHelp = liftIO $ putStrLn $ unlines
@@ -153,7 +154,7 @@ showStatus = do
     pprint "Invalid:" invalid' ++
     pprint "Alien:" alien' ++
     pprint "Unknown:" unknown'
-    ) 
+    )
 
   liftIO $ setCurrentDirectory (envAppDir env)
   call "git status"
@@ -186,7 +187,7 @@ showHelp :: IO ()
 showHelp = do
   putStrLn $ unwords ["hdotfiles ", Version.showVersion version]
   mapM_ putStrLn $ "Available commands:" : fmap ("\t- "++) (Map.keys commands)
-  
+
 
 runApp :: IO ()
 runApp = do
