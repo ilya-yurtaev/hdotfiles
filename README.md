@@ -4,7 +4,7 @@
 
 > This is my hdotfiles. There are [many like it](https://dotfiles.github.io), but this one is mine.
 
-Simple dotfiles management tool. Consider it as just a CRUD over dotfiles list.
+Simple dotfiles management tool. Consider it just a CRUD over dotfiles list.
 
 
 ## Installation
