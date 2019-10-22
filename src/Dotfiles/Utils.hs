@@ -1,4 +1,4 @@
-module Dotfiles.Utils 
+module Dotfiles.Utils
     ( mkdir
     , rm
     , cp
@@ -33,9 +33,11 @@ mkdir = createDirectoryIfMissing True
 rm :: FilePath -> IO ()
 rm p = do
   f <- doesFileExist p
-  if f then removeFile p else do
-    d <- doesDirectoryExist p
-    when d $ removeDirectoryRecursive p
+  if f
+    then removeFile p
+    else do
+      d <- doesDirectoryExist p
+      when d $ removeDirectoryRecursive p
 
 
 -- | Moves file or directory.
@@ -43,16 +45,18 @@ rm p = do
 mv :: FilePath -> FilePath -> IO ()
 mv from to = do
   f <- doesFileExist from
-  if f then mvF from to else do
-    d <- doesDirectoryExist from
-    when d $ mvD from to
-    where
-      mvF f t = do
-        mkdir (takeDirectory t)
-        renameFile f t
-      mvD f t = do
-        mkdir (takeDirectory t)
-        renameDirectory f t
+  if f
+    then mvF from to
+    else do
+      d <- doesDirectoryExist from
+      when d $ mvD from to
+ where
+  mvF f t = do
+    mkdir (takeDirectory t)
+    renameFile f t
+  mvD f t = do
+    mkdir (takeDirectory t)
+    renameDirectory f t
 
 
 -- | Copies file or directory.
@@ -60,17 +64,19 @@ mv from to = do
 cp :: FilePath -> FilePath -> IO ()
 cp from to = do
   f <- doesFileExist from
-  if f then cpF from to else do
-    d <- doesDirectoryExist from
-    when d $ cpD from to
-  where
-    cpF f t = do
-      mkdir (takeDirectory t)
-      copyFile f t
-    cpD f t = do
-      mkdir t
-      entries <- filter (`notElem` [".", ".."]) `fmap` getDirectoryContents f
-      mapM_ (\x -> cp (f </> x) (t </> x)) entries
+  if f
+    then cpF from to
+    else do
+      d <- doesDirectoryExist from
+      when d $ cpD from to
+ where
+  cpF f t = do
+    mkdir (takeDirectory t)
+    copyFile f t
+  cpD f t = do
+    mkdir t
+    entries <- filter (`notElem` [".", ".."]) `fmap` getDirectoryContents f
+    mapM_ (\x -> cp (f </> x) (t </> x)) entries
 
 
 -- | Compares two files by content
@@ -92,7 +98,8 @@ denormalize basePath = replace basePath "~"
 normalize :: FilePath -> String -> FilePath
 normalize basePath fp = case normalise $ strip fp of
   "." -> []
-  xs  -> strip' . expand $ xs where
+  xs  -> strip' . expand $ xs
+   where
 
     expand ('~':'/':fp') = joinPath [basePath, fp']
     expand "~"           = basePath
@@ -100,5 +107,5 @@ normalize basePath fp = case normalise $ strip fp of
 
     strip' fp' = case reverse fp' of
       ('*':'/':fp'') -> reverse fp''
-      ('/':fp'')     -> reverse fp''
+      ('/'    :fp'') -> reverse fp''
       fp''           -> reverse fp''

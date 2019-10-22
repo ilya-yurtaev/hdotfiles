@@ -13,14 +13,14 @@ mkdir' p = do
   exists p `shouldReturn` False
   mkdir p
   exists p `shouldReturn` True
-  
+
 
 touch :: FilePath -> IO ()
 touch p = do
   exists p `shouldReturn` False
   writeFile p ""
   exists p `shouldReturn` True
-  
+
 
 spec :: Spec
 spec = do
@@ -31,8 +31,8 @@ spec = do
         mkdir' testdir
 
       it "copies file" $ \env -> do
-        let testfile = envAppDir env </> "somefile"
-        let testdir = envAppDir env </> "somedir" </> "subdir"
+        let testfile   = envAppDir env </> "somefile"
+        let testdir    = envAppDir env </> "somedir" </> "subdir"
         let anotherdir = envAppDir env </> "anotherdir"
         let copiedfile = anotherdir </> "copiedfile"
         touch testfile
@@ -44,8 +44,8 @@ spec = do
         exists copiedfile `shouldReturn` True
 
       it "copies dir recursive" $ \env -> do
-        let dir1 = envRoot env </> "dir1"
-        let dir2 = envRoot env </> "dir2"
+        let dir1     = envRoot env </> "dir1"
+        let dir2     = envRoot env </> "dir2"
         let testfile = dir1 </> "somefile"
         mkdir' dir1
         mkdir' dir2
@@ -54,10 +54,10 @@ spec = do
         exists (dir2 </> "somefile") `shouldReturn` True
         exists dir1 `shouldReturn` True
         exists testfile `shouldReturn` True
-  
+
       it "renames file" $ \env -> do
         let testfile = envRoot env </> "testfile"
-        let target = envRoot env </> "target"
+        let target   = envRoot env </> "target"
         exists target `shouldReturn` False
         touch testfile
         mv testfile target
@@ -65,9 +65,9 @@ spec = do
         exists testfile `shouldReturn` False
 
       it "renames dir" $ \env -> do
-        let testdir = envRoot env </> "dir1"
-        let targetdir = envRoot env </> "dir2"
-        let testfile = testdir </> "testfile"
+        let testdir    = envRoot env </> "dir1"
+        let targetdir  = envRoot env </> "dir2"
+        let testfile   = testdir </> "testfile"
         let targetfile = targetdir </> "testfile"
         mkdir' testdir
         touch testfile
@@ -84,7 +84,7 @@ spec = do
         exists testfile `shouldReturn` False
 
       it "removes dir" $ \env -> do
-        let testdir = envAppDir env </> "testdir"
+        let testdir  = envAppDir env </> "testdir"
         let testfile = testdir </> "testfile"
         mkdir' testdir
         touch testfile
@@ -92,31 +92,34 @@ spec = do
         exists testdir `shouldReturn` False
         exists testfile `shouldReturn` False
 
-      it "denormalizes normlized path" $ \env -> do
-        denormalize (envAppDir env) (envAppDir env) `shouldBe` "~"
+      it "denormalizes normlized path"
+        $ \env -> denormalize (envAppDir env) (envAppDir env) `shouldBe` "~"
 
-      it "denormalizes already denormalized path" $ \env -> do
-        denormalize (envAppDir env) "~/.wtfrc" `shouldBe` "~/.wtfrc"
+      it "denormalizes already denormalized path"
+        $ \env -> denormalize (envAppDir env) "~/.wtfrc" `shouldBe` "~/.wtfrc"
 
-      it "denormalizes empty string" $ \env -> do
-        denormalize (envAppDir env) "" `shouldBe` ""
+      it "denormalizes empty string"
+        $ \env -> denormalize (envAppDir env) "" `shouldBe` ""
 
-      it "normalizes root" $ \env -> do
-        normalize (envRoot env) "~" `shouldBe` envRoot env
+      it "normalizes root"
+        $ \env -> normalize (envRoot env) "~" `shouldBe` envRoot env
 
-      it "normalizes first level path" $ \env -> do
+      it "normalizes first level path" $ \env ->
         normalize (envRoot env) "~/.wtfrc" `shouldBe` envRoot env </> ".wtfrc"
 
-      it "normalizes empty path" $ \env -> do
-        normalize (envAppDir env) "" `shouldBe` ""
+      it "normalizes empty path"
+        $ \env -> normalize (envAppDir env) "" `shouldBe` ""
 
-      it "normalizes absolute path" $ \env -> do
+      it "normalizes absolute path" $ \env ->
         normalize (envAppDir env) "/absolute/path" `shouldBe` "/absolute/path"
 
-      it "normalizes glob" $ \env -> do
-        normalize (envAppDir env) "~/glob/*" `shouldBe` envAppDir env </> "glob"
+      it "normalizes glob"
+        $ \env ->
+            normalize (envAppDir env) "~/glob/*"
+              `shouldBe` envAppDir env
+              </>        "glob"
 
-      it "normalizes dir" $ \env -> do
+      it "normalizes dir" $ \env ->
         normalize (envAppDir env) "~/dir/" `shouldBe` envAppDir env </> "dir"
 
       it "compares equal files" $ \env -> do
@@ -124,11 +127,11 @@ spec = do
         let f2 = envAppDir env </> "f2"
         writeFile f1 "some file content"
         writeFile f2 "some file content"
-        cmp f1 f2 `shouldReturn` True
+        cmp       f1 f2 `shouldReturn` True
 
       it "compares different files" $ \env -> do
         let f3 = envAppDir env </> "f3"
         let f4 = envAppDir env </> "f4"
         writeFile f3 "some file content"
         writeFile f4 "another file content"
-        cmp f3 f4 `shouldReturn` False
+        cmp       f3 f4 `shouldReturn` False

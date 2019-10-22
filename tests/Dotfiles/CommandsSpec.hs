@@ -13,7 +13,8 @@ import SpecHelper
 
 -- re-read config
 cmd :: Env -> Command -> Args -> IO ()
-cmd env command args = readEnv (envRoot env) >>= \env' -> runCommand env' command args
+cmd env command args =
+  readEnv (envRoot env) >>= \env' -> runCommand env' command args
 
 
 -- read names only
@@ -27,7 +28,9 @@ cfg = sort ["~/first", "~/second", "~/third", "~/fourth", "~/fifth"]
 
 withPopulatedEnv :: (Env -> IO ()) -> IO ()
 withPopulatedEnv action = withEnv ((createFiles >> return) >=> action)
-  where createFiles env = mapM_ (\fn -> writeFile (normalize (envRoot env) fn) fn) cfg
+ where
+  createFiles env =
+    mapM_ (\fn -> writeFile (normalize (envRoot env) fn) fn) cfg
 
 
 spec :: Spec
@@ -48,14 +51,16 @@ spec = do
         cmd env addDotfiles cfg
         readCfg env `shouldReturn` cfg
         cmd env forgetDotfiles [head cfg]
-        cmd env syncDotfiles []
+        cmd env syncDotfiles   []
         readCfg env `shouldReturn` tail cfg
 
       it "runs `sync` command" $ \env -> do
-        writeConfig (envCfgPath env) Config
-          { appDir = Just $ denormalize (envRoot env) (envAppDir env)
-          , dfNames = cfg
-          }
+        writeConfig
+          (envCfgPath env)
+          Config
+            { appDir  = Just $ denormalize (envRoot env) (envAppDir env)
+            , dfNames = cfg
+            }
         cmd env syncDotfiles []
         readCfg env `shouldReturn` cfg
 

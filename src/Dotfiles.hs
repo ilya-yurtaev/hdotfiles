@@ -54,55 +54,46 @@ data Env = Env
 -- | Main magic
 getDotfileStatus :: FilePath -> FilePath -> IO DotfileStatus
 getDotfileStatus src dst = do
-  lnk <- (Link <$> readSymbolicLink src) `catch` handleLinkError
+  lnk    <- (Link <$> readSymbolicLink src) `catch` handleLinkError
   copied <- doesFileExist dst
   determine lnk copied
-  where determine DoesNotExist True  = return PendingRight
-        determine DoesNotExist False = return Invalid
-        determine InvalidLink True = do
-          sameFile <- cmp src dst
-          return $ if sameFile
-                      then PendingRight
-                      else Conflicts
-        determine InvalidLink False       = return PendingLeft
-        determine Other _            = return Unknown
-        determine (Link somelink) True = do
-          lnk_src_exist <- doesFileExist somelink
-          return $ if lnk_src_exist
-                      then
-                         if somelink == dst
-                           then Tracked
-                           else Alien
-                      else PendingRight -- broken link
-        determine (Link somelink) False = do
-          lnk_src_exist <- doesFileExist somelink
-          return $ if lnk_src_exist
-                      then PendingLeft
-                      else Invalid -- link is broken, no dst
+ where
+  determine DoesNotExist True  = return PendingRight
+  determine DoesNotExist False = return Invalid
+  determine InvalidLink  True  = do
+    sameFile <- cmp src dst
+    return $ if sameFile then PendingRight else Conflicts
+  determine InvalidLink     False = return PendingLeft
+  determine Other           _     = return Unknown
+  determine (Link somelink) True  = do
+    lnk_src_exist <- doesFileExist somelink
+    return $ if lnk_src_exist
+      then if somelink == dst then Tracked else Alien
+      else PendingRight -- broken link
+  determine (Link somelink) False = do
+    lnk_src_exist <- doesFileExist somelink
+    return $ if lnk_src_exist then PendingLeft else Invalid -- link is broken, no dst
 
-        handleLinkError e | isDoesNotExistError e = return DoesNotExist
-                          | isInvalidLink e       = return InvalidLink
-                          | otherwise             = return Other
+  handleLinkError e | isDoesNotExistError e = return DoesNotExist
+                    | isInvalidLink e       = return InvalidLink
+                    | otherwise             = return Other
 
-        isInvalidLink :: IOError -> Bool
-        isInvalidLink = isInvalidArgument . ioeGetErrorType
-          where isInvalidArgument InvalidArgument = True
-                isInvalidArgument _               = False
+  isInvalidLink :: IOError -> Bool
+  isInvalidLink = isInvalidArgument . ioeGetErrorType
+   where
+    isInvalidArgument InvalidArgument = True
+    isInvalidArgument _               = False
 
 
 mkDotfile :: Env -> String -> IO Dotfile
 mkDotfile env name = do
   status <- getDotfileStatus src dst
-  return Dotfile
-    { dfName   = name'
-    , dfSrc    = src
-    , dfDst    = dst
-    , dfStatus = status
-    }
-  where src   = normalize home name
-        dst   = replace home (envStorage env) src
-        name' = denormalize home src
-        home  = envRoot env
+  return Dotfile {dfName = name', dfSrc = src, dfDst = dst, dfStatus = status}
+ where
+  src   = normalize home name
+  dst   = replace home (envStorage env) src
+  name' = denormalize home src
+  home  = envRoot env
 
 
 mkDotfiles :: Env -> Names -> IO Dotfiles
@@ -114,17 +105,16 @@ unpack = fmap dfName . Set.toList
 
 -- actions
 sync :: Dotfile -> IO ()
-sync df =
-  case dfStatus df of
-    PendingRight -> do
-      rm (dfSrc df) -- if there is a link -- it's 100% broken
-      link df
-    PendingLeft  -> do
-      rm (dfDst df)
-      cp (dfSrc df) (dfDst df)
-      rm (dfSrc df)
-      link df
-    _            -> return ()
+sync df = case dfStatus df of
+  PendingRight -> do
+    rm (dfSrc df) -- if there is a link -- it's 100% broken
+    link df
+  PendingLeft -> do
+    rm (dfDst df)
+    cp (dfSrc df) (dfDst df)
+    rm (dfSrc df)
+    link df
+  _ -> return ()
 
 
 link :: Dotfile -> IO ()
@@ -132,12 +122,11 @@ link df = createSymbolicLink (dfDst df) (dfSrc df)
 
 
 unlink :: Dotfile -> IO ()
-unlink df =
-  case dfStatus df of
-    Tracked -> do
-      rm (dfSrc df)
-      cp (dfDst df) (dfSrc df)
-    _       -> return ()
+unlink df = case dfStatus df of
+  Tracked -> do
+    rm (dfSrc df)
+    cp (dfDst df) (dfSrc df)
+  _ -> return ()
 
 
 backup :: Env -> Dotfile -> IO ()

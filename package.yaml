@@ -1,0 +1,64 @@
+name: hdotfiles
+version: '0.3.0.1'
+synopsis: Simple dotfiles management tool
+description: Simple dotfiles management tool
+category: Dotfiles
+author: Ilya Yurtaev
+maintainer: ilya.yurtaev@gmail.com
+copyright: 2015 Ilya Yurtaev
+license: MIT
+github: ilya-yurtaev/hdotfiles
+homepage: http://github.com/ilya-yurtaev/hdotfiles
+dependencies:
+- base >=4.7
+library:
+  source-dirs: src
+  ghc-options: -Wall
+  exposed-modules:
+  - Dotfiles
+  - Dotfiles.Commands
+  - Dotfiles.Config
+  - Dotfiles.Utils
+  - Paths_hdotfiles
+  dependencies:
+  - MissingH
+  - containers
+  - directory
+  - filepath
+  - process
+  - transformers
+  - unix
+  - yaml
+executables:
+  dotfiles:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -Wall
+    - -threaded
+    dependencies:
+    - hdotfiles
+tests:
+  hlint:
+    main: Hlint.hs
+    source-dirs: tests
+    ghc-options:
+    - -threaded
+    - -with-rtsopts=-N
+    dependencies:
+    - hlint-test
+  hdotfiles-test:
+    main: Spec.hs
+    source-dirs: tests
+    ghc-options:
+    - -Wall
+    - -threaded
+    dependencies:
+    - containers
+    - directory
+    - filepath
+    - hdotfiles
+    - hspec >=2.1
+    - temporary >=1.2.0
+    - transformers
+    - unix

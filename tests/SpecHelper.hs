@@ -3,7 +3,7 @@ module SpecHelper where
 import           Control.Monad ((>=>))
 import           System.Directory (doesFileExist, doesDirectoryExist)
 import           System.IO.Temp (withSystemTempDirectory)
-  
+
 import           Dotfiles
 import           Dotfiles.Config
 import           Dotfiles.Commands
@@ -11,7 +11,7 @@ import           Dotfiles.Commands
 
 exists :: FilePath -> IO Bool
 exists path = or `fmap` sequence [doesFileExist path, doesDirectoryExist path]
-  
+
 
 mockEnv :: FilePath -> IO Env
 mockEnv tmpDir = do

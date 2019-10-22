@@ -1,16 +1,29 @@
-defaul: runtest
+defaul: test
+
 
 build: clean
-	stack build
+	stack build --haddock
+
 
 install: clean
 	stack install
 
+
 clean:
 	stack clean
 
-runtest:
+
+test:
+	stack test --fast
+
+
+watch:
 	stack test --fast --file-watch
 
+
 deeptest:
-	stack test --coverage --file-watch --fast --haddock
+	stack test --fast --coverage --haddock
+
+
+format:
+	brittany --write-mode=inplace **/*.hs
