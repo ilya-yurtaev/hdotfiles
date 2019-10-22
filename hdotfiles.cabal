@@ -21,7 +21,7 @@ library
                      , Dotfiles.Utils
                      , Paths_hdotfiles
 
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.7
                      , MissingH
                      , containers
                      , directory
@@ -43,7 +43,7 @@ executable dotfiles
   ghc-options:         -Wall
                        -threaded
 
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.7
                      , hdotfiles
 
   default-language:    Haskell2010
@@ -58,7 +58,7 @@ test-suite hdotfiles-test
                      , Dotfiles.ConfigSpec
                      , Dotfiles.UtilsSpec
 
-  build-depends:       base >= 4.7 && < 5
+  build-depends:       base >= 4.7
                      , containers
                      , directory
                      , filepath

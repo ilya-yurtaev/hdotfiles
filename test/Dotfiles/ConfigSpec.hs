@@ -6,7 +6,6 @@ import Test.Hspec
 
 import Dotfiles
 import Dotfiles.Config
-import Dotfiles.Utils
 import SpecHelper
 
 
@@ -14,7 +13,7 @@ spec :: Spec
 spec = do
      describe "Dotfiles.Config" $ do
        around withEnv $ do
-         it "covers default env" $ \env -> do
+         it "covers default env" $ \_ -> do
            env' <- defaultEnv
            home <- getHomeDirectory
            tmp <- getTemporaryDirectory

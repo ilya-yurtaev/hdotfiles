@@ -7,7 +7,7 @@
 Simple dotfiles management tool. Consider it just a CRUD over dotfiles list.
 
 
-## Installation
+## Installation:
 
 First of all you need [stack](http://docs.haskellstack.org/en/stable/README/#how-to-install) if you don't have it already.
 
@@ -17,3 +17,6 @@ git clone https://github.com/ilya-yurtaev/hdotfiles
 cd hdotfiles
 stack install
 ```
+
+## Usage:
+`dotfiles help`
