@@ -18,7 +18,6 @@ matrix:
 
   - env: ARGS="--resolver nightly"
     compiler: ": #stack nightly"
-    addons: {apt: {packages: [libgmp,libgmp-dev]}}
 
   - env: ARGS=""
     compiler: ": #stack default osx"
