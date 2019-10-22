@@ -13,18 +13,11 @@ matrix:
   - env: ARGS=""
     compiler: ": #stack default"
 
-  - env: ARGS="--resolver lts-6"
-    compiler: ": #stack 7.10.3"
-
   - env: ARGS="--resolver nightly"
     compiler: ": #stack nightly"
 
   - env: ARGS=""
     compiler: ": #stack default osx"
-    os: osx
-
-  - env: ARGS="--resolver lts-6"
-    compiler: ": #stack 7.10.3 osx"
     os: osx
 
   - env: ARGS="--resolver nightly"
@@ -60,8 +53,8 @@ before_install:
 
 install:
 - |
-  stack --no-terminal --install-ghc $ARGS test --bench --only-dependencies
+  stack --no-terminal --install-ghc $ARGS test --fast --bench --only-dependencies
 
 script:
 - |
-  stack --no-terminal $ARGS test --bench --no-run-benchmarks --haddock --no-haddock-deps
+  stack --no-terminal $ARGS test --fast --bench --no-run-benchmarks --haddock --no-haddock-deps

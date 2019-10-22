@@ -36,6 +36,7 @@ executables:
     ghc-options:
     - -Wall
     - -threaded
+    - -O2
     dependencies:
     - hdotfiles
 tests:
