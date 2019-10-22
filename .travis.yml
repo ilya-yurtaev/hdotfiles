@@ -10,28 +10,30 @@ cache:
 
 matrix:
   include:
-  - env: BUILD=stack ARGS=""
+  - env: ARGS=""
     compiler: ": #stack default"
 
-  - env: BUILD=stack ARGS="--resolver lts-6"
+  - env: ARGS="--resolver lts-6"
     compiler: ": #stack 7.10.3"
 
-  - env: BUILD=stack ARGS=""
-    compiler: ": #stack default osx"
-    os: osx
-
-  - env: BUILD=stack ARGS="--resolver lts-6"
-    compiler: ": #stack 7.10.3 osx"
-    os: osx
-
-  allow_failures:
-  - env: BUILD=stack ARGS="--resolver nightly"
+  - env: ARGS="--resolver nightly"
     compiler: ": #stack nightly"
     addons: {apt: {packages: [libgmp,libgmp-dev]}}
 
-  - env: BUILD=stack ARGS="--resolver nightly"
+  - env: ARGS=""
+    compiler: ": #stack default osx"
+    os: osx
+
+  - env: ARGS="--resolver lts-6"
+    compiler: ": #stack 7.10.3 osx"
+    os: osx
+
+  - env: ARGS="--resolver nightly"
     compiler: ": #stack nightly osx"
     os: osx
+
+  allow_failures:
+  - env: ARGS="--resolver nightly"
 
 
 
@@ -59,9 +61,6 @@ before_install:
   then
     echo 'jobs: $ncpus' >> $HOME/.cabal/config
   fi
-
-# Get the list of packages from the stack.yaml file
-- PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
 
 install:
 - |
